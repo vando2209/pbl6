@@ -53,7 +53,7 @@ const ProductList: React.FC = () => {
         const { data } = await fetchProducts({
           page: 1,
           pageSize: 500,         // đủ lớn cho dataset hiện tại
-          category: category,              // "men" | "women" | "kids"
+          category_id: category,              // "men" | "women" | "kids"
           // KHÔNG gửi subcategory (backend cần subcategory_id dạng số)
           is_sale: saleOnly ? 1 : undefined,
         });

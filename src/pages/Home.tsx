@@ -32,9 +32,9 @@ const Home: React.FC = () => {
           fetchProducts({ page: 1, pageSize: 50 }),
           fetchProducts({ is_new: 1, page: 1, pageSize: 8 }),
           fetchProducts({ is_sale: 1, page: 1, pageSize: 8 }),
-          fetchProducts({ category: "men", page: 1, pageSize: 4 }),
-          fetchProducts({ category: "women", page: 1, pageSize: 4 }),
-          fetchProducts({ category: "kids", page: 1, pageSize: 4 }),
+          fetchProducts({ category_id: "men", page: 1, pageSize: 4 }),
+          fetchProducts({ category_id: "women", page: 1, pageSize: 4 }),
+          fetchProducts({ category_id: "kids", page: 1, pageSize: 4 }),
         ]);
 
         const pick = <T,>(i: number) =>
