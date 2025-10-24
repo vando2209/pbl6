@@ -80,20 +80,24 @@ router.get('/', async (req, res) => {
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-    // Lưu ý: SQL_CALC_FOUND_ROWS đã deprecated trên MySQL 8; nếu muốn "đúng chuẩn" hơn, hãy chạy COUNT(*) riêng.
+    // MySQL 8: Tránh SQL_CALC_FOUND_ROWS vì hiệu năng kém và đã deprecated
     const [rows] = await pool.query(
-      `SELECT SQL_CALC_FOUND_ROWS *
+      `SELECT *
        FROM products
        ${whereSql}
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       [...params, pageSize, offset]
     );
-    const [totalRows]: any = await pool.query('SELECT FOUND_ROWS() AS total');
+
+    const [countRows]: any = await pool.query(
+      `SELECT COUNT(*) AS total FROM products ${whereSql}`,
+      params
+    );
 
     res.json({
       data: rows,
-      pagination: { page, pageSize, total: totalRows[0]?.total ?? 0 }
+      pagination: { page, pageSize, total: countRows[0]?.total ?? 0 }
     });
   } catch (e: any) {
     res.status(500).json({ error: String(e?.message || e) });
