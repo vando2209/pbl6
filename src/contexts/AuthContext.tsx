@@ -50,13 +50,62 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Simple SHA-256 hashing using Web Crypto API. Fallback to a prefixed plain string when unavailable.
+async function hashPassword(plain: string): Promise<string> {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plain);
+    // @ts-ignore crypto in browser
+    const digest = await (window.crypto || (globalThis as any).crypto).subtle.digest('SHA-256', data);
+    const bytes = Array.from(new Uint8Array(digest));
+    return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    // Fallback (not secure, but avoids storing raw password quietly)
+    return `plain:${plain}`;
+  }
+}
+
+async function ensureDefaultPasswordStore(): Promise<Record<string, string>> {
+  const key = 'auth_password_store_v1';
+  const raw = localStorage.getItem(key);
+  let store: Record<string, string> = raw ? JSON.parse(raw) : {};
+
+  // Seed default demo passwords only if missing
+  if (!store['admin@uniqlo.vn']) {
+    store['admin@uniqlo.vn'] = await hashPassword('admin123');
+  }
+  if (!store['customer@email.com']) {
+    store['customer@email.com'] = await hashPassword('customer123');
+  }
+
+  localStorage.setItem(key, JSON.stringify(store));
+  return store;
+}
+
+function readPasswordStore(): Record<string, string> {
+  const key = 'auth_password_store_v1';
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : {};
+}
+
+function writePasswordStore(store: Record<string, string>) {
+  const key = 'auth_password_store_v1';
+  localStorage.setItem(key, JSON.stringify(store));
+}
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock login logic
     const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser && password === '123456') {
+    if (!foundUser) return false;
+
+    // Ensure store and verify per-user password
+    await ensureDefaultPasswordStore();
+    const store = readPasswordStore();
+    const submittedHash = await hashPassword(password);
+    const expectedHash = store[email];
+    if (expectedHash && submittedHash === expectedHash) {
       setUser(foundUser);
       return true;
     }
@@ -68,7 +117,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Mock registration
+    // Store hashed password in localStorage for demo purposes only
+    await ensureDefaultPasswordStore();
+    const store = readPasswordStore();
+    const hashed = await hashPassword(password);
+    store[email] = hashed;
+    writePasswordStore(store);
+
     const newUser: User = {
       id: Date.now().toString(),
       name,
